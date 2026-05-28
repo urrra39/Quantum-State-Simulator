@@ -1,0 +1,64 @@
+# TensorQ-Engine: development & local-production orchestration.
+#
+# Brings up two services on a private bridge network:
+#   - tensorq-engine  : FastAPI quantum math service (port 8000)
+#   - tensorq-dashboard : Next.js 14 dashboard (port 3000)
+#
+# Usage:
+#   docker compose up --build
+#   docker compose down
+
+name: tensorq
+
+services:
+  tensorq-engine:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: tensorq/engine:1.0.0
+    container_name: tensorq-engine
+    restart: unless-stopped
+    environment:
+      # Comma-separated list of allowed CORS origins.
+      TENSORQ_CORS_ORIGINS: "http://localhost:3000,http://tensorq-dashboard:3000"
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8000:8000"
+    networks:
+      - tensorq-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  tensorq-dashboard:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the Next.js build for client-side rewrites.
+        NEXT_PUBLIC_TENSORQ_API: "http://tensorq-engine:8000"
+    image: tensorq/dashboard:1.0.0
+    container_name: tensorq-dashboard
+    restart: unless-stopped
+    environment:
+      # Used at runtime by next.config.mjs rewrites; routes /api/tensorq/* to
+      # the engine over the private docker network.
+      NEXT_PUBLIC_TENSORQ_API: "http://tensorq-engine:8000"
+      NODE_ENV: "production"
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "3000:3000"
+    depends_on:
+      tensorq-engine:
+        condition: service_healthy
+    networks:
+      - tensorq-net
+
+networks:
+  tensorq-net:
+    driver: bridge
+    name: tensorq-net
