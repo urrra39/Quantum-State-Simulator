@@ -7,8 +7,8 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import __version__
-from app.api.routes import router as api_router
+from tensorq import __version__
+from tensorq.api.routes import router as api_router
 
 
 def create_app() -> FastAPI:

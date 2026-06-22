@@ -7,8 +7,8 @@ from typing import List
 import numpy as np
 from fastapi import APIRouter, HTTPException, status
 
-from app import __version__
-from app.core import (
+from tensorq import __version__
+from tensorq.core import (
     CONTROLLED_GATES,
     GATE_LIBRARY,
     SINGLE_QUBIT_GATES,
@@ -16,9 +16,9 @@ from app.core import (
     sample_measurements,
     simulate_circuit,
 )
-from app.core.measurement import basis_label
-from app.exceptions import CircuitValidationError, DimensionMismatchError
-from app.models.schemas import (
+from tensorq.core.measurement import basis_label
+from tensorq.exceptions import CircuitValidationError, DimensionMismatchError
+from tensorq.models.schemas import (
     Amplitude,
     GateInfo,
     HealthResponse,

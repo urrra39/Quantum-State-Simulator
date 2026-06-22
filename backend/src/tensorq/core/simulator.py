@@ -14,14 +14,14 @@ from typing import List, Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from app.core.gates import (
+from tensorq.core.gates import (
     CONTROLLED_GATES,
     SINGLE_QUBIT_GATES,
     get_gate,
     is_unitary,
 )
-from app.core.tensor import build_controlled_gate, embed_single_qubit_gate
-from app.exceptions import (
+from tensorq.core.tensor import build_controlled_gate, embed_single_qubit_gate
+from tensorq.exceptions import (
     CircuitValidationError,
     DimensionMismatchError,
 )

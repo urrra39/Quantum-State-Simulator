@@ -1,6 +1,6 @@
 """Pydantic request/response schemas."""
 
-from app.models.schemas import (
+from tensorq.models.schemas import (
     GateOperation,
     SimulationRequest,
     SimulationResponse,

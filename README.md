@@ -42,7 +42,7 @@ Every qubit lives in a 2-D complex Hilbert space spanned by
 |0⟩ = (1, 0)ᵀ           |1⟩ = (0, 1)ᵀ
 ```
 
-declared in `backend/app/core/gates.py` as `numpy.complex128` column vectors.
+declared in `backend/src/tensorq/core/gates.py` as `numpy.complex128` column vectors.
 
 ### 2.2 Single-qubit gates
 
@@ -65,7 +65,7 @@ A single-qubit gate `U` acting on qubit `t` of an `n`-qubit register is lifted t
 U_full = I₂^⊗t  ⊗  U  ⊗  I₂^⊗(n−t−1)
 ```
 
-implemented as `embed_single_qubit_gate(U, t, n)` in `backend/app/core/tensor.py`, using `functools.reduce(np.kron, ...)`.
+implemented as `embed_single_qubit_gate(U, t, n)` in `backend/src/tensorq/core/tensor.py`, using `functools.reduce(np.kron, ...)`.
 
 ### 2.4 Controlled gates via projector decomposition
 
@@ -75,7 +75,7 @@ For a multi-controlled gate with control set `C = {c₁, …, cₖ}` and target 
 CU = I + (Π_{c ∈ C} P₁⁽ᶜ⁾) · (U⁽ᵗ⁾ − I)
 ```
 
-where `P₁⁽ᶜ⁾ = embed(|1⟩⟨1|, c, n)` and `U⁽ᵗ⁾ = embed(U, t, n)`. Projectors at distinct qubits commute, so the product is the joint controls-all-one projector. This handles **CNOT, CY, CZ, CH** (single-control) and **Toffoli/CCX** (multi-control) uniformly. See `build_controlled_gate(...)` in `backend/app/core/tensor.py`.
+where `P₁⁽ᶜ⁾ = embed(|1⟩⟨1|, c, n)` and `U⁽ᵗ⁾ = embed(U, t, n)`. Projectors at distinct qubits commute, so the product is the joint controls-all-one projector. This handles **CNOT, CY, CZ, CH** (single-control) and **Toffoli/CCX** (multi-control) uniformly. See `build_controlled_gate(...)` in `backend/src/tensorq/core/tensor.py`.
 
 ### 2.5 State evolution and measurement
 
@@ -178,11 +178,37 @@ Every run renders:
 ```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+# Editable install of the `tensorq` package, including test/dev extras.
+pip install -e ".[test]"
+uvicorn tensorq.main:app --reload --port 8000
 ```
 
+> For a production-pinned runtime instead, use `pip install -r requirements.txt`.
+> Test/dev-only dependencies also live in `requirements-dev.txt`.
+
 OpenAPI docs: <http://localhost:8000/docs>
+
+### Backend test suite
+
+The engine ships with a **190-test pytest suite** (`backend/tests/`) that verifies the quantum math from first principles — exact gate matrices, unitarity, tensor-product embedding, the Bell / GHZ / Toffoli circuits, the Born rule, and the full HTTP API surface.
+
+```bash
+cd backend
+pip install -e ".[test]"
+pytest                       # 190 tests
+pytest --cov=tensorq         # with coverage (~95%)
+```
+
+| Test module | Focus |
+| ----------- | ----- |
+| `test_gates.py` | Gate matrices, unitarity, algebraic identities (`S²=Z`, `T⁴=Z`, `HXH=Z`, `i·XZ=Y`) |
+| `test_tensor.py` | Kronecker embedding, exact CNOT / CZ / Toffoli operators, validation errors |
+| `test_simulator.py` | Initial state, Bell, GHZ, Toffoli truth table, normalization, circuit validation |
+| `test_measurement.py` | Born-rule distribution, seeded-RNG sampling determinism, shot histograms |
+| `test_api.py` | `/health`, `/gates`, `/simulate`, seed reproducibility, 400/422 error envelopes |
+
+> Tests run on Python 3.9–3.12. The PEP 604 `int | None` annotations are evaluated on
+> 3.9 via the `eval_type_backport` test dependency (declared in the `test` extra).
 
 ### Frontend
 
@@ -225,18 +251,23 @@ The frontend container reaches the backend over the docker network at `http://te
 ```
 Quantum-State-Simulator/
 ├── backend/
-│   ├── app/
-│   │   ├── main.py                  FastAPI app factory + CORS
-│   │   ├── exceptions.py            CircuitValidationError, DimensionMismatchError
-│   │   ├── core/
-│   │   │   ├── gates.py             |0⟩, |1⟩, X, Y, Z, H, S, T (from scratch)
-│   │   │   ├── tensor.py            Kronecker product, embed_single_qubit_gate,
-│   │   │   │                        build_controlled_gate
-│   │   │   ├── simulator.py         Circuit parsing + state evolution
-│   │   │   └── measurement.py       Born rule + shot sampling
-│   │   ├── api/routes.py            /health, /gates, /simulate
-│   │   └── models/schemas.py        Pydantic v2 request/response models
-│   ├── requirements.txt
+│   ├── src/
+│   │   └── tensorq/                 Importable package (src-layout)
+│   │       ├── main.py              FastAPI app factory + CORS
+│   │       ├── exceptions.py        CircuitValidationError, DimensionMismatchError
+│   │       ├── core/
+│   │       │   ├── gates.py         |0⟩, |1⟩, X, Y, Z, H, S, T (from scratch)
+│   │       │   ├── tensor.py        Kronecker product, embed_single_qubit_gate,
+│   │       │   │                    build_controlled_gate
+│   │       │   ├── simulator.py     Circuit parsing + state evolution
+│   │       │   └── measurement.py   Born rule + shot sampling
+│   │       ├── api/routes.py        /health, /gates, /simulate
+│   │       └── models/schemas.py    Pydantic v2 request/response models
+│   ├── tests/                       190-test pytest suite (gates, tensor,
+│   │                                simulator, measurement, API)
+│   ├── pyproject.toml               Package metadata + pytest/coverage config
+│   ├── requirements.txt             Pinned production runtime (py3.12)
+│   ├── requirements-dev.txt         Test/dev dependencies
 │   └── Dockerfile                   python:3.12-slim, non-root, healthcheck
 ├── frontend/
 │   ├── app/                         Next.js 14 App Router

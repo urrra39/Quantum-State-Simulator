@@ -29,7 +29,7 @@ from typing import Iterable, Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from app.core.gates import I2, PROJ_1
+from tensorq.core.gates import I2, PROJ_1
 
 ComplexMatrix = NDArray[np.complex128]
 
